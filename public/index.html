@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Compte Russie</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      color: #18202a;
+    }
+
+    header {
+      text-align: center;
+      background: #fff;
+      padding: 20px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .logo {
+      width: 70px;
+      height: 45px;
+      object-fit: cover;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 30px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 18px #0001;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    input, button {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px;
+      border-radius: 9px;
+      border: 1px solid #ccd2d8;
+      font-size: 15px;
+    }
+
+    button {
+      background: #222;
+      color: #fff;
+      border: 0;
+      cursor: pointer;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .result {
+      margin-top: 14px;
+      padding: 12px;
+      background: #f1f3f5;
+      border-radius: 9px;
+    }
+
+    a {
+      color: #1261a0;
+    }
+
+    @media (max-width: 600px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <img
+    class="logo"
+    src="https://upload.wikimedia.org/wikipedia/en/f/f3/Flag_of_Russia.svg"
+    alt="Drapeau de la Russie"
+  >
+
+  <h1>COMPTE RUSSIE</h1>
+</header>
+
+<main>
+
+  <section class="card">
+    <h2>Créer une demande</h2>
+
+    <form id="signup">
+
+      <div class="grid">
+
+        <input
+          name="first"
+          placeholder="Prénom"
+          required
+        >
+
+        <input
+          name="last"
+          placeholder="Nom"
+          required
+        >
+
+        <input
+          name="email"
+          type="email"
+          placeholder="E-mail"
+          required
+        >
+
+        <input
+          name="username"
+          placeholder="Nom d'utilisateur"
+          required
+        >
+
+        <input
+          name="country"
+          placeholder="Pays"
+          required
+        >
+
+        <input
+          name="city"
+          placeholder="Ville"
+          required
+        >
+
+        <button class="full" type="submit">
+          Envoyer la demande
+        </button>
+
+      </div>
+
+    </form>
+
+    <div id="signupResult" class="result" hidden></div>
+  </section>
+
+
+  <section class="card">
+
+    <h2>Suivre une demande</h2>
+
+    <form id="statusForm" class="grid">
+
+      <input
+        name="username"
+        class="full"
+        placeholder="Nom d'utilisateur"
+        required
+      >
+
+      <button class="full" type="submit">
+        Vérifier le statut
+      </button>
+
+    </form>
+
+    <div id="statusResult" class="result" hidden></div>
+
+  </section>
+
+
+  <section class="card">
+
+    <h2>Service client</h2>
+
+    <div id="contact">
+      Chargement…
+    </div>
+
+  </section>
+
+</main>
+
+
+<script>
+
+const $ = selector => document.querySelector(selector);
+
+
+// Envoi d'une demande
+document.querySelector("#signup").addEventListener("submit", async event => {
+
+  event.preventDefault();
+
+  const data = Object.fromEntries(
+    new FormData(event.target)
+  );
+
+  const response = await fetch("/api/requests", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  });
+
+  const result = await response.json();
+
+  const box = $("#signupResult");
+
+  box.hidden = false;
+
+  if (response.ok) {
+
+    box.textContent =
+      "Demande envoyée avec succès. Conservez votre nom d'utilisateur pour suivre son statut.";
+
+    event.target.reset();
+
+  } else {
+
+    box.textContent =
+      result.error || "Une erreur est survenue.";
+
+  }
+
+});
+
+
+// Suivi d'une demande
+document.querySelector("#statusForm").addEventListener("submit", async event => {
+
+  event.preventDefault();
+
+  const username =
+    new FormData(event.target).get("username");
+
+  const response = await fetch(
+    "/api/status/" + encodeURIComponent(username)
+  );
+
+  const result = await response.json();
+
+  const box = $("#statusResult");
+
+  box.hidden = false;
+
+  if (response.ok) {
+
+    box.textContent =
+      "Statut : " + result.status;
+
+  } else {
+
+    box.textContent =
+      result.error || "Demande introuvable.";
+
+  }
+
+});
+
+
+// Service client
+fetch("/api/settings")
+  .then(response => response.json())
+  .then(settings => {
+
+    const links = [];
+
+    if (settings.whatsapp) {
+
+      const number =
+        settings.whatsapp.replace(/\D/g, "");
+
+      links.push(
+        `<a href="https://wa.me/${number}">
+          WhatsApp : ${settings.whatsapp}
+        </a>`
+      );
+
+    }
+
+    if (settings.email) {
+
+      links.push(
+        `<a href="mailto:${settings.email}">
+          E-mail : ${settings.email}
+        </a>`
+      );
+
+    }
+
+    if (settings.hours) {
+
+      links.push(
+        "Horaires : " + settings.hours
+      );
+
+    }
+
+    $("#contact").innerHTML =
+      links.length
+        ? links.join("<br>")
+        : "Contact à configurer.";
+
+  });
+
+</script>
+
+</body>
+</html>
