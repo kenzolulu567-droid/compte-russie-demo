@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Compte Russie — Administration</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef1f4;
+      margin: 0;
+      color: #18202a;
+    }
+
+    header {
+      background: #222;
+      color: #fff;
+      padding: 18px;
+    }
+
+    .wrap {
+      max-width: 1050px;
+      margin: 25px auto;
+      padding: 0 15px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 18px #0001;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .row input {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    input,
+    button {
+      padding: 10px;
+      border: 1px solid #ccd2d8;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    button {
+      background: #222;
+      color: #fff;
+      cursor: pointer;
+      border: 0;
+    }
+
+    .danger {
+      background: #9b2226;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 9px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    @media (max-width: 700px) {
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <strong>COMPTE RUSSIE — ADMINISTRATION</strong>
+</header>
+
+<div class="wrap">
+
+  <!-- CONNEXION -->
+  <section class="card" id="loginCard">
+
+    <h2>Connexion administrateur</h2>
+
+    <div class="row">
+
+      <input
+        id="key"
+        type="password"
+        placeholder="Clé administrateur"
+      >
+
+      <button onclick="login()">
+        Se connecter
+      </button>
+
+    </div>
+
+    <p id="loginMsg"></p>
+
+  </section>
+
+
+  <!-- PANNEAU ADMIN -->
+  <div id="panel" class="hidden">
+
+    <section class="card">
+
+      <h2>Demandes</h2>
+
+      <button onclick="loadRequests()">
+        Actualiser
+      </button>
+
+      <div id="requests"></div>
+
+    </section>
+
+
+    <section class="card">
+
+      <h2>Service client</h2>
+
+      <div class="row">
+
+        <input
+          id="whatsapp"
+          placeholder="WhatsApp"
+        >
+
+        <input
+          id="email"
+          placeholder="E-mail"
+        >
+
+        <input
+          id="hours"
+          placeholder="Horaires"
+        >
+
+        <button onclick="saveSettings()">
+          Enregistrer
+        </button>
+
+      </div>
+
+      <p id="settingsMsg"></p>
+
+    </section>
+
+  </div>
+
+</div>
+
+
+<script>
+
+let key = "";
+
+const $ = selector =>
+  document.querySelector(selector);
+
+
+// CONNEXION ADMIN
+async function login() {
+
+  key = document.querySelector("#key").value;
+
+  if (!key) {
+
+    document.querySelector("#loginMsg").textContent =
+      "Saisis la clé administrateur.";
+
+    return;
+  }
+
+  const response = await fetch("/api/requests", {
+
+    headers: {
+      "x-admin-key": key
+    }
+
+  });
+
+  if (!response.ok) {
+
+    document.querySelector("#loginMsg").textContent =
+      "Clé incorrecte.";
+
+    return;
+  }
+
+  document.querySelector("#loginCard")
+    .classList.add("hidden");
+
+  document.querySelector("#panel")
+    .classList.remove("hidden");
+
+  loadRequests();
+  loadSettings();
+
+}
+
+
+// AFFICHER LES DEMANDES
+async function loadRequests() {
+
+  const response = await fetch("/api/requests", {
+
+    headers: {
+      "x-admin-key": key
+    }
+
+  });
+
+  const rows = await response.json();
+
+  let html = `
+    <table>
+
+      <tr>
+        <th>ID</th>
+        <th>Utilisateur</th>
+        <th>Nom</th>
+        <th>Pays</th>
+        <th>Statut</th>
+        <th>Action</th>
+      </tr>
+  `;
+
+  rows.forEach(request => {
+
+    html += `
+      <tr>
+
+        <td>${request.id}</td>
+
+        <td>${request.username}</td>
+
+        <td>
+          ${request.first}
+          ${request.last}
+        </td>
+
+        <td>
+          ${request.country},
+          ${request.city}
+        </td>
+
+        <td>
+          ${request.status}
+        </td>
+
+        <td>
+
+          <button
+            onclick="setStatus(${request.id}, 'Approuvée')">
+            Approuver
+          </button>
+
+          <button
+            class="danger"
+            onclick="setStatus(${request.id}, 'Refusée')">
+            Refuser
+          </button>
+
+        </td>
+
+      </tr>
+    `;
+
+  });
+
+  html += "</table>";
+
+  document.querySelector("#requests").innerHTML = html;
+
+}
+
+
+// MODIFIER LE STATUT
+async function setStatus(id, status) {
+
+  await fetch(
+    "/api/requests/" + id,
+    {
+
+      method: "PATCH",
+
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-key": key
+      },
+
+      body: JSON.stringify({
+        status: status
+      })
+
+    }
+  );
+
+  loadRequests();
+
+}
+
+
+// CHARGER LES PARAMÈTRES
+async function loadSettings() {
+
+  const response =
+    await fetch("/api/settings");
+
+  const settings =
+    await response.json();
+
+  document.querySelector("#whatsapp").value =
+    settings.whatsapp || "";
+
+  document.querySelector("#email").value =
+    settings.email || "";
+
+  document.querySelector("#hours").value =
+    settings.hours || "";
+
+}
+
+
+// ENREGISTRER LES PARAMÈTRES
+async function saveSettings() {
+
+  const body = {
+
+    whatsapp:
+      document.querySelector("#whatsapp").value,
+
+    email:
+      document.querySelector("#email").value,
+
+    hours:
+      document.querySelector("#hours").value
+
+  };
+
+  const response = await fetch(
+    "/api/settings",
+    {
+
+      method: "PUT",
+
+      headers: {
+
+        "Content-Type":
+          "application/json",
+
+        "x-admin-key":
+          key
+
+      },
+
+      body: JSON.stringify(body)
+
+    }
+  );
+
+  document.querySelector("#settingsMsg")
+    .textContent = response.ok
+      ? "Paramètres enregistrés."
+      : "Erreur lors de l'enregistrement.";
+
+}
+
+</script>
+
+</body>
+</html>
